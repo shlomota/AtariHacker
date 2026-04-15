@@ -9,17 +9,20 @@ from Quartz import (
     kCGNullWindowID,
 )
 from AppKit import NSWorkspace
+from play import show_intro
+
+show_intro()
 
 # === CONFIG ===
 GAME_WINDOW_KEYWORD = "Wiply Games"   # part of your tab title (adjust if needed)
 CHROME_APP_NAMES = ("google chrome", "chrome")
-SCAN_Y_RATIO = 0.2            # vertical location to scan (tune if needed)
-TOLERANCE = 4                 # pixels from center to trigger
-MIN_INTERVAL = 0.6             # seconds between drops
+SCAN_Y_RATIO = 0.22            # vertical location to scan (tune if needed)
+TOLERANCE = 0                 # pixels from center to trigger
+MIN_INTERVAL = 0.5             # seconds between drops
 GAME_OVER_UNIFORM_FRAMES = 60  # consecutive uniform frames before assuming game over
-PREDICT_LEAD_TIME = 0.05      # click this many seconds before center at current speed
+PREDICT_LEAD_TIME = 0.03      # click this many seconds before center at current speed
 MIN_LEAD_PX = 0                # minimum pre-center trigger distance
-MAX_LEAD_PX = 20               # cap for high-speed swings
+MAX_LEAD_PX = 18               # cap for high-speed swings
 
 last_press = 0
 
@@ -226,7 +229,7 @@ def main():
                         print(f"  [ready] block swung to offset={offset:+d}, re-engaging")
                     else:
                         print(f"  [wait]  x={x:4d}  offset={offset:+4d}  (waiting for swing)")
-                    time.sleep(0.001)
+                    time.sleep(0.0003)
                     continue
 
                 print(f"x={x:4d}  offset={offset:+4d}  vel={velocity:+7.1f} px/s")
@@ -258,7 +261,7 @@ def main():
                     prev_x = None
                     missed_frames = 0
 
-            time.sleep(0.01)
+            time.sleep(0.0001)
 
 
 if __name__ == "__main__":
