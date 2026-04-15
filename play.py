@@ -24,10 +24,10 @@ LOGO = r"""
        🎁  T O W E R  B O T  🎁
 """
 
-MATRIX_CHARS = "ﾊﾐﾋｰｳｼﾅﾓﾆｻﾜﾂｵﾘｱﾎﾃﾏｹﾒｴｶｷﾑﾕﾗｾﾈｽﾀﾇﾍ01"
+MATRIX_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*+-="
 
 
-def matrix_rain(duration=2.5, cols=80, rows=18):
+def matrix_rain(duration=1.0, cols=80, rows=18):
     """Quick Matrix-style rain effect in the terminal."""
     drops = [random.randint(-rows, 0) for _ in range(cols)]
     start = time.time()
@@ -71,7 +71,7 @@ def show_intro():
 
     print(CLEAR, end="")
     # Matrix rain
-    matrix_rain(duration=2.5)
+    matrix_rain(duration=1.0)
 
     # Clear and show logo
     print(CLEAR, end="")
@@ -191,6 +191,22 @@ def _largest_segment(xs):
     return best_l, best_r
 
 
+def _all_segments(xs):
+    """Given a sorted list of x indices, return all contiguous (left, right) runs."""
+    if not xs:
+        return []
+    segments = []
+    start = prev = xs[0]
+    for x in xs[1:]:
+        if x == prev + 1:
+            prev = x
+        else:
+            segments.append((start, prev))
+            start = prev = x
+    segments.append((start, prev))
+    return segments
+
+
 def find_swing_range(frame, prev_frame):
     """
     Frame-diff detection for the MOVING block.
@@ -208,7 +224,7 @@ def find_swing_range(frame, prev_frame):
     return _largest_segment(xs)
 
 
-def find_tower_range(search_strip):
+def find_tower_range(search_strip, expected_cx=None):
     """
     Find the topmost placed block in the tower by detecting the red ribbon
     on gift boxes.  Scans the strip top-to-bottom; the first row with a
@@ -222,34 +238,56 @@ def find_tower_range(search_strip):
     g = search_strip[:, :, 1].astype(np.int16)
     b = search_strip[:, :, 2].astype(np.int16)
 
-    # Red ribbon: high R, low G and B
-    red_mask = (r > 140) & (g < 110) & (b < 110)   # shape (H, W)
+    # Red ribbon: dominant red channel (more robust to shading/AA than hard RGB caps)
+    red_mask = (r > 105) & ((r - g) > 35) & ((r - b) > 35)  # shape (H, W)
 
     # Find topmost row with enough red pixels
     row_red_count = red_mask.sum(axis=1)             # (H,)
-    red_rows = np.where(row_red_count >= 3)[0]
+    red_rows = np.where(row_red_count >= 2)[0]
 
     if len(red_rows) == 0:
         return None
 
-    top_row = red_rows[0]
+    candidates = []
+    for top_row in red_rows[:30]:
+        # Scan a band from this row downward to capture the box body
+        band_end = min(H, top_row + 48)
+        band_red = red_mask[top_row:band_end]              # (band_h, W)
 
-    # Scan a band from that row downward to capture the full block body
-    band_end = min(H, top_row + 40)
-    band_red  = red_mask[top_row:band_end]           # (band_h, W)
+        # White/light box body in same band
+        r_b = r[top_row:band_end]
+        g_b = g[top_row:band_end]
+        b_b = b[top_row:band_end]
+        white_mask = (r_b > 180) & (g_b > 180) & (b_b > 180)
 
-    # White/light box body in same band
-    r_b = r[top_row:band_end]
-    g_b = g[top_row:band_end]
-    b_b = b[top_row:band_end]
-    white_mask = (r_b > 190) & (g_b > 190) & (b_b > 190)
+        combined = band_red | white_mask                   # red OR white columns
+        col_active = combined.any(axis=0)                  # (W,)
+        xs = list(np.where(col_active)[0])
+        segments = _all_segments(xs)
 
-    combined = band_red | white_mask                 # red OR white columns
-    col_active = combined.any(axis=0)                # (W,)
-    xs = list(np.where(col_active)[0])
+        for seg_l, seg_r in segments:
+            width = seg_r - seg_l + 1
+            if width < 12:
+                continue
+            seg_red = int(band_red[:, seg_l:seg_r + 1].sum())
+            seg_white = int(white_mask[:, seg_l:seg_r + 1].sum())
 
-    seg = _largest_segment(xs)
-    return seg if seg and seg[1] - seg[0] > 10 else None
+            # Reject noisy red blobs (e.g., hearts/HUD elements)
+            if seg_red < max(10, width // 2):
+                continue
+            if seg_white < width * 2:
+                continue
+
+            cx = (seg_l + seg_r) // 2
+            dist = abs(cx - expected_cx) if expected_cx is not None else 0
+            score = seg_red + 0.20 * seg_white - 1.5 * dist - 0.6 * top_row
+            candidates.append((score, dist, (seg_l, seg_r)))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: (-item[0], item[1]))
+    return candidates[0][2]
 
 
 def calc_overlap_ratio(r1, r2):
@@ -338,9 +376,6 @@ def main():
             swing_range = find_swing_range(swing_img, prev_swing_img)
             prev_swing_img = swing_img
 
-            # ── detect tower top block ──
-            tower_range = find_tower_range(tower_img)
-
             if swing_range is None:
                 missed_frames += 1
                 if missed_frames >= MAX_MISSED:
@@ -355,6 +390,9 @@ def main():
             offset   = swing_cx - center
             velocity = ((swing_cx - ((prev_swing_range[0] + prev_swing_range[1]) // 2)) / dt
                         if (prev_swing_range is not None and dt > 0) else 0)
+
+            # ── detect tower top block (biased toward swing x to avoid HUD false positives) ──
+            tower_range = find_tower_range(tower_img, expected_cx=swing_cx)
 
             # ── post-click: wait for block to swing away from center ──
             if waiting_for_swing:
