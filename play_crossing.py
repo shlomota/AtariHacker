@@ -17,6 +17,9 @@ SCAN_Y_RATIO = 0.32            # vertical location to scan (tune if needed)
 TOLERANCE = 10                 # pixels from center to trigger
 MIN_INTERVAL = 0.4             # seconds between drops
 GAME_OVER_UNIFORM_FRAMES = 60  # consecutive uniform frames before assuming game over
+PREDICT_LEAD_TIME = 0.018      # click this many seconds before center at current speed
+MIN_LEAD_PX = 4                # minimum pre-center trigger distance
+MAX_LEAD_PX = 30               # cap for high-speed swings
 
 last_press = 0
 
@@ -228,13 +231,21 @@ def main():
 
                 print(f"x={x:4d}  offset={offset:+4d}  vel={velocity:+7.1f} px/s")
 
-                # Fire on center-crossing: prev and current on opposite sides
+                # Fire near center crossing:
+                # 1) exact crossing (prev and current on opposite sides), or
+                # 2) predictive pre-click when fast and still approaching center
                 if prev_x is not None:
                     prev_offset = prev_x - center
                     crossed_center = (prev_offset < 0 and offset >= 0) or \
                                      (prev_offset > 0 and offset <= 0)
-                    if crossed_center:
-                        print(f"  >>> CLICK (crossed center, vel={velocity:+.1f})")
+
+                    moving_toward_center = (offset * velocity) < 0
+                    lead_px = int(np.clip(abs(velocity) * PREDICT_LEAD_TIME, MIN_LEAD_PX, MAX_LEAD_PX))
+                    pre_center_window = moving_toward_center and abs(offset) <= lead_px
+
+                    if crossed_center or pre_center_window:
+                        trigger = "crossed center" if crossed_center else f"pre-center (lead={lead_px}px)"
+                        print(f"  >>> CLICK ({trigger}, vel={velocity:+.1f})")
                         press_space()
                         waiting_for_swing = True
                         prev_x = None
