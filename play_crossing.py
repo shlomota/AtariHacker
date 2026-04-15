@@ -14,11 +14,11 @@ from AppKit import NSWorkspace
 GAME_WINDOW_KEYWORD = "Wiply Games"   # part of your tab title (adjust if needed)
 CHROME_APP_NAMES = ("google chrome", "chrome")
 SCAN_Y_RATIO = 0.2            # vertical location to scan (tune if needed)
-TOLERANCE = 2                 # pixels from center to trigger
+TOLERANCE = 4                 # pixels from center to trigger
 MIN_INTERVAL = 0.6             # seconds between drops
 GAME_OVER_UNIFORM_FRAMES = 60  # consecutive uniform frames before assuming game over
-PREDICT_LEAD_TIME = 0.08      # click this many seconds before center at current speed
-MIN_LEAD_PX = 1                # minimum pre-center trigger distance
+PREDICT_LEAD_TIME = 0.05      # click this many seconds before center at current speed
+MIN_LEAD_PX = 0                # minimum pre-center trigger distance
 MAX_LEAD_PX = 20               # cap for high-speed swings
 
 last_press = 0
