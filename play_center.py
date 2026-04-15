@@ -15,7 +15,7 @@ GAME_WINDOW_KEYWORD = "Wiply Games"
 CHROME_APP_NAMES = ("google chrome", "chrome")
 SCAN_Y_RATIO = 0.32
 SCAN_HEIGHT = 10
-CENTER_TOLERANCE = 3          # click when abs(offset) <= this many pixels
+CENTER_TOLERANCE = 2          # click when abs(offset) <= this many pixels
 MIN_INTERVAL = 0.4            # min seconds between clicks
 GAME_OVER_UNIFORM_FRAMES = 60
 MIN_SWING_RESET = 150         # after click, wait until block swings away this far
@@ -171,7 +171,7 @@ def main():
                     prev_x = None
                     waiting_for_swing = False
                     was_in_zone = False
-                time.sleep(0.01)
+                time.sleep(0.001)
                 continue
             else:
                 uniform_count = 0
@@ -185,7 +185,7 @@ def main():
                     prev_x = None
                     was_in_zone = False
                     missed_frames = 0
-                time.sleep(0.01)
+                time.sleep(0.001)
                 continue
 
             missed_frames = 0

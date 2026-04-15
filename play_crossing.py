@@ -14,7 +14,7 @@ from AppKit import NSWorkspace
 GAME_WINDOW_KEYWORD = "Wiply Games"   # part of your tab title (adjust if needed)
 CHROME_APP_NAMES = ("google chrome", "chrome")
 SCAN_Y_RATIO = 0.32            # vertical location to scan (tune if needed)
-TOLERANCE = 10                 # pixels from center to trigger
+TOLERANCE = 2                 # pixels from center to trigger
 MIN_INTERVAL = 0.4             # seconds between drops
 GAME_OVER_UNIFORM_FRAMES = 60  # consecutive uniform frames before assuming game over
 PREDICT_LEAD_TIME = 0.018      # click this many seconds before center at current speed
@@ -202,7 +202,7 @@ def main():
                     prev_img = None
                     waiting_for_swing = False
                 prev_img = None
-                time.sleep(0.01)
+                time.sleep(0.0003)
                 continue
             else:
                 uniform_count = 0
