@@ -13,13 +13,13 @@ from AppKit import NSWorkspace
 # === CONFIG ===
 GAME_WINDOW_KEYWORD = "Wiply Games"   # part of your tab title (adjust if needed)
 CHROME_APP_NAMES = ("google chrome", "chrome")
-SCAN_Y_RATIO = 0.32            # vertical location to scan (tune if needed)
+SCAN_Y_RATIO = 0.2            # vertical location to scan (tune if needed)
 TOLERANCE = 2                 # pixels from center to trigger
-MIN_INTERVAL = 0.4             # seconds between drops
+MIN_INTERVAL = 0.6             # seconds between drops
 GAME_OVER_UNIFORM_FRAMES = 60  # consecutive uniform frames before assuming game over
-PREDICT_LEAD_TIME = 0.018      # click this many seconds before center at current speed
-MIN_LEAD_PX = 4                # minimum pre-center trigger distance
-MAX_LEAD_PX = 30               # cap for high-speed swings
+PREDICT_LEAD_TIME = 0.08      # click this many seconds before center at current speed
+MIN_LEAD_PX = 1                # minimum pre-center trigger distance
+MAX_LEAD_PX = 20               # cap for high-speed swings
 
 last_press = 0
 
@@ -183,7 +183,7 @@ def main():
                 "top":    win["top"] + int(win["height"] * SCAN_Y_RATIO),
                 "left":   win["left"],
                 "width":  win["width"],
-                "height": 10,
+                "height": 50,
             }
 
             now = time.time()
@@ -226,7 +226,7 @@ def main():
                         print(f"  [ready] block swung to offset={offset:+d}, re-engaging")
                     else:
                         print(f"  [wait]  x={x:4d}  offset={offset:+4d}  (waiting for swing)")
-                    time.sleep(0.01)
+                    time.sleep(0.001)
                     continue
 
                 print(f"x={x:4d}  offset={offset:+4d}  vel={velocity:+7.1f} px/s")
@@ -243,7 +243,7 @@ def main():
                     lead_px = int(np.clip(abs(velocity) * PREDICT_LEAD_TIME, MIN_LEAD_PX, MAX_LEAD_PX))
                     pre_center_window = moving_toward_center and abs(offset) <= lead_px
 
-                    if crossed_center or pre_center_window:
+                    if (crossed_center and abs(offset) < 2) or (pre_center_window and abs(offset) < 100):
                         trigger = "crossed center" if crossed_center else f"pre-center (lead={lead_px}px)"
                         print(f"  >>> CLICK ({trigger}, vel={velocity:+.1f})")
                         press_space()
